@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>政策追踪</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* 设计：政策台账 — 深绿主色（双碳/绿电），宋体标题（政务文件），等宽数据（台账）。
+     数据由 check.ps1 从 seen.json 生成，本文件为模板，请勿手改 DATA。 */
+  :root {
+    --bg: #f6f8f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ec;
+    --fg: #17231b;
+    --muted: #5d6d62;
+    --line: #dde5dd;
+    --accent: #14634a;
+    --accent-strong: #0d4a37;
+    --on-accent: #ffffff;
+    --t-power: #a05f12;  --t-power-bg: rgba(160,95,18,.11);
+    --t-carbon: #0e6f6a; --t-carbon-bg: rgba(14,111,106,.11);
+    --t-foot:   #1a7a3f; --t-foot-bg:   rgba(26,122,63,.11);
+    --font-display: "SimSun", "Songti SC", "STSong", "Noto Serif SC", serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Consolas", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1511;
+      --surface: #15201a;
+      --surface-2: #1c2a22;
+      --fg: #e4ede6;
+      --muted: #93a599;
+      --line: #26352c;
+      --accent: #4fc48c;
+      --accent-strong: #7fd8ab;
+      --on-accent: #0c1a13;
+      --t-power: #e3a75c; --t-power-bg: rgba(227,167,92,.14);
+      --t-carbon: #4fb8b0; --t-carbon-bg: rgba(79,184,176,.14);
+      --t-foot:   #58c488; --t-foot-bg:   rgba(88,196,136,.14);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1511;
+    --surface: #15201a;
+    --surface-2: #1c2a22;
+    --fg: #e4ede6;
+    --muted: #93a599;
+    --line: #26352c;
+    --accent: #4fc48c;
+    --accent-strong: #7fd8ab;
+    --on-accent: #0c1a13;
+    --t-power: #e3a75c; --t-power-bg: rgba(227,167,92,.14);
+    --t-carbon: #4fb8b0; --t-carbon-bg: rgba(79,184,176,.14);
+    --t-foot:   #58c488; --t-foot-bg:   rgba(88,196,136,.14);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    padding: 32px 16px 56px;
+  }
+  .wrap { max-width: 1000px; margin-inline: auto; }
+
+  .headrow { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 5.5vw, 44px);
+    font-weight: 700;
+    letter-spacing: .02em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .theme-toggle {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .theme-toggle:hover { color: var(--fg); border-color: var(--accent); }
+
+  .sub { color: var(--muted); margin: 0 0 28px; font-size: 14.5px; }
+  .sub b { color: var(--fg); font-weight: 600; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .stat .n {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .l { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .fg { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .fg:last-child { margin-bottom: 0; }
+  .flabel {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .06em;
+    min-width: 34px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--fg); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .dot.t-power { background: var(--t-power); }
+  .dot.t-carbon { background: var(--t-carbon); }
+  .dot.t-foot { background: var(--t-foot); }
+
+  .searchrow { display: flex; align-items: center; gap: 10px; }
+  .searchrow input {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 9px 13px;
+  }
+  .searchrow input:focus { outline: none; border-color: var(--accent); }
+
+  .countline { color: var(--muted); font-size: 12.5px; margin: 12px 2px 10px; }
+  .countline b { color: var(--fg); font-family: var(--font-mono); font-weight: 600; }
+
+  .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    display: grid;
+    grid-template-columns: 46px 74px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: 15px 18px;
+  }
+  .item.t-power { border-left-color: var(--t-power); }
+  .item.t-carbon { border-left-color: var(--t-carbon); }
+  .item.t-foot { border-left-color: var(--t-foot); }
+
+  .idx {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .date { display: flex; flex-direction: column; line-height: 1.15; }
+  .date .y { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: .06em; }
+  .date b {
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+
+  .body { min-width: 0; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .src {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--surface-2);
+    padding: 2px 9px;
+    border-radius: 6px;
+  }
+  .type { font-size: 12px; color: var(--muted); }
+  .kw { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); letter-spacing: .02em; }
+  .kw::before { content: "· "; }
+  .title {
+    font-family: var(--font-display);
+    font-size: 16.5px;
+    font-weight: 600;
+    line-height: 1.45;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .title a { color: var(--fg); text-decoration: none; }
+  .title a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+  .go {
+    display: grid;
+    place-items: center;
+    width: 34px; height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 16px;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .go:hover { color: var(--accent); border-color: var(--accent); background: var(--surface-2); }
+
+  .empty {
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 26px; line-height: 1.6; }
+  .note code { font-family: var(--font-mono); }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .item { grid-template-columns: 40px 64px minmax(0, 1fr); gap: 12px; padding: 13px 14px; }
+    .go { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div class="headrow">
+    <div>
+      <div class="eyebrow">国务院 · 六部委 · 政策监测台账</div>
+      <h1>政策追踪</h1>
+    </div>
+    <button id="themeToggle" class="theme-toggle" type="button" aria-label="切换深浅色">深色</button>
+  </div>
+  <p class="sub" id="subtitle">ESG / 双碳 / 电力 / 碳市场</p>
+  <div class="stats">
+    <div class="stat"><span class="n" id="statTotal">—</span><span class="l">命中政策</span></div>
+    <div class="stat"><span class="n" id="statSource">—</span><span class="l">涉及部委</span></div>
+    <div class="stat"><span class="n" id="statTheme">—</span><span class="l">覆盖主题</span></div>
+    <div class="stat"><span class="n" id="statKw">—</span><span class="l">监测关键词</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="controls">
+    <div class="fg">
+      <span class="flabel">主题</span>
+      <div class="chips" id="themeChips"></div>
+    </div>
+    <div class="fg">
+      <span class="flabel">来源</span>
+      <div class="chips" id="sourceChips"></div>
+    </div>
+    <div class="fg">
+      <div class="searchrow">
+        <span class="flabel">搜索</span>
+        <input id="q" type="search" placeholder="按标题、文号、关键词筛选…" autocomplete="off">
+      </div>
+    </div>
+  </div>
+
+  <div class="countline">显示 <b id="count">0</b> / <b id="total">0</b> 条 · 最新优先</div>
+  <ol class="list" id="list"></ol>
+</main>
+
+<footer class="wrap">
+  <p class="note">数据来源：gov.cn · mee.gov.cn · ndrc.gov.cn · nea.gov.cn · mof.gov.cn · samr.gov.cn · miit.gov.cn 列表页首页（不翻页）。由本地脚本 <code>check.ps1</code> 于 <span id="gen">/*__GENERATED__*/</span> 生成。</p>
+</footer>
+
+<script>
+  const DATA = /*__DATA__*/;
+  const KW_COUNT = /*__KW_COUNT__*/;
+
+  // 关键词 → 主题归类（供筛选与着色）
+  const KW2THEME = {
+    "电力": "power", "新型电力系统": "power", "源网荷储": "power", "虚拟电厂": "power",
+    "绿电": "power", "绿证": "power", "电力现货市场": "power", "容量电价": "power", "能耗双控": "power",
+    "碳交易": "carbon", "碳市场": "carbon", "碳配额": "carbon", "碳排放": "carbon", "碳排放双控": "carbon",
+    "CCER": "carbon", "碳普惠": "carbon", "自愿减排": "carbon", "碳抵消": "carbon", "碳汇": "carbon",
+    "碳中和": "carbon", "净零": "carbon", "碳关税": "carbon", "CBAM": "carbon", "零碳园区": "carbon", "零碳工厂": "carbon",
+    "碳足迹": "foot", "产品碳足迹": "foot", "碳标识": "foot", "温室气体": "foot", "气候披露": "foot",
+    "范围一": "foot", "范围二": "foot", "范围三": "foot", "可持续披露": "foot", "ESG": "foot", "双碳": "foot"
+  };
+  const THEMES = [
+    { key: "all", label: "全部" },
+    { key: "power", label: "电力" },
+    { key: "carbon", label: "碳市场" },
+    { key: "foot", label: "碳足迹 / 温室气体" }
+  ];
+  function themeOf(kw) { return KW2THEME[kw] || "foot"; }
+  function typeOf(t) {
+    if (/征求意见/.test(t)) return "征求意见";
+    if (/条例/.test(t)) return "条例";
+    if (/规划/.test(t)) return "规划";
+    if (/行动计划/.test(t)) return "行动计划";
+    if (/办法/.test(t)) return "办法";
+    if (/方案/.test(t)) return "方案";
+    if (/标准/.test(t)) return "标准";
+    if (/公告/.test(t)) return "公告";
+    if (/答记者问|解读/.test(t)) return "解读";
+    if (/通知/.test(t)) return "通知";
+    return "政策";
+  }
+
+  DATA.sort((a, b) => (a.date < b.date ? 1 : (a.date > b.date ? -1 : 0)));
+
+  const state = { theme: "all", source: "all", q: "" };
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function uniq(arr) { return arr.filter((v, i, a) => a.indexOf(v) === i); }
+
+  function initHeader() {
+    const n = DATA.length;
+    document.getElementById("statTotal").textContent = n;
+    document.getElementById("statSource").textContent = uniq(DATA.map(x => x.source)).length;
+    document.getElementById("statTheme").textContent = uniq(DATA.map(x => themeOf(x.kw))).length;
+    document.getElementById("statKw").textContent = KW_COUNT;
+    let sub = "ESG / 双碳 / 电力 / 碳市场";
+    if (n > 0) {
+      const ds = DATA.map(x => x.date).sort();
+      const range = ds[0] === ds[ds.length - 1] ? ds[0] : ds[0] + " — " + ds[ds.length - 1];
+      sub += " —— 累计命中 <b>" + n + "</b> 条 · " + range;
+    } else {
+      sub += " —— 尚无命中";
+    }
+    document.getElementById("subtitle").innerHTML = sub;
+    document.getElementById("total").textContent = n;
+  }
+
+  function buildChips(container, items, active, onChange) {
+    container.innerHTML = "";
+    items.forEach(it => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (active === it.key ? " on" : "");
+      b.dataset.key = it.key;
+      if (it.dot) { b.innerHTML = '<span class="dot ' + it.dot + '"></span>' + esc(it.label); }
+      else { b.textContent = it.label; }
+      b.addEventListener("click", () => onChange(it.key));
+      container.appendChild(b);
+    });
+  }
+  function sources() {
+    const set = uniq(DATA.map(x => x.source));
+    return [{ key: "all", label: "全部" }].concat(set.map(s => ({ key: s, label: s })));
+  }
+
+  function filtered() {
+    const q = state.q.trim().toLowerCase();
+    return DATA.filter(it => {
+      if (state.theme !== "all" && themeOf(it.kw) !== state.theme) return false;
+      if (state.source !== "all" && it.source !== state.source) return false;
+      if (q && !(it.title + " " + it.kw + " " + typeOf(it.title)).toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+
+  function renderList() {
+    const items = filtered();
+    document.getElementById("count").textContent = items.length;
+    const list = document.getElementById("list");
+    if (items.length === 0) {
+      list.innerHTML = '<li class="empty">没有匹配的政策条目，换个筛选条件试试。</li>';
+      return;
+    }
+    list.innerHTML = items.map((it, i) => {
+      const parts = (it.date || "").split("-");
+      const md = (parts[1] || "") + "." + (parts[2] || "");
+      return '<li class="item t-' + themeOf(it.kw) + '">' +
+        '<span class="idx">' + String(i + 1).padStart(2, "0") + '</span>' +
+        '<time class="date"><span class="y">' + (parts[0] || "") + '</span><b>' + md + '</b></time>' +
+        '<div class="body">' +
+          '<div class="meta"><span class="src">' + esc(it.source) + '</span><span class="type">' + esc(typeOf(it.title)) + '</span><span class="kw">' + esc(it.kw) + '</span></div>' +
+          '<h2 class="title"><a href="' + esc(it.url) + '" target="_blank" rel="noopener">' + esc(it.title) + '</a></h2>' +
+        '</div>' +
+        '<a class="go" href="' + esc(it.url) + '" target="_blank" rel="noopener" aria-label="查看原文">↗</a>' +
+      '</li>';
+    }).join("");
+  }
+
+  function renderChips() {
+    buildChips(document.getElementById("themeChips"),
+      THEMES.map(t => ({ key: t.key, label: t.label, dot: t.key === "all" ? "" : "t-" + t.key })),
+      state.theme, k => { state.theme = k; renderChips(); renderList(); });
+    buildChips(document.getElementById("sourceChips"), sources(), state.source,
+      k => { state.source = k; renderChips(); renderList(); });
+  }
+
+  // 深浅色切换
+  function isDark() {
+    if (document.documentElement.dataset.theme === "dark") return true;
+    if (document.documentElement.dataset.theme === "light") return false;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function updateToggle() {
+    document.getElementById("themeToggle").textContent = isDark() ? "浅色" : "深色";
+  }
+  try {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+  } catch (e) {}
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const next = isDark() ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    updateToggle();
+  });
+
+  document.getElementById("q").addEventListener("input", e => { state.q = e.target.value; renderList(); });
+
+  initHeader();
+  renderChips();
+  renderList();
+  updateToggle();
+</script>
+</body>
+</html>
