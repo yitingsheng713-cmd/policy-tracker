@@ -291,7 +291,33 @@ if (Test-Path $TemplateFile) {
     $html = $html.Replace('/*__KW_COUNT__*/', [string]$Keywords.Count)
     $html = $html.Replace('/*__GENERATED__*/', (Get-Date -Format 'yyyy-MM-dd HH:mm'))
     Set-Content -Path $DashFile -Value $html -Encoding UTF8
+    # 同时输出 index.html 供 GitHub Pages 根目录默认页使用
+    $IdxFile = Join-Path $Root 'index.html'
+    Set-Content -Path $IdxFile -Value $html -Encoding UTF8
     Log "网页台账已更新: $DashFile（共 $($dashItems.Count) 条）"
+
+    # 提交并推送到 GitHub Pages（非 git 仓库 / 无远端 / 网络失败均不致命）
+    try {
+        if (Test-Path (Join-Path $Root '.git')) {
+            git -C $Root add -A *> $null
+            git -C $Root diff --cached --quiet
+            if ($LASTEXITCODE -eq 0) {
+                Log '台账无变化，跳过 git 提交。'
+            } else {
+                git -C $Root commit -m "更新台账 $(Get-Date -Format 'yyyy-MM-dd')" -m "Co-Authored-By: Claude Code <noreply@anthropic.com>" *> $null
+                $pushed = $false
+                for ($i = 0; $i -lt 3; $i++) {
+                    git -C $Root push *> $null
+                    if ($LASTEXITCODE -eq 0) { $pushed = $true; break }
+                    Start-Sleep -Seconds 10
+                }
+                if ($pushed) { Log '已推送到 GitHub Pages。' }
+                else { Log 'git push 连续失败（可能网络问题），本次检查不受影响。' }
+            }
+        }
+    } catch {
+        Log "git 推送环节异常（不影响本次检查）：$($_.Exception.Message)"
+    }
 } else {
     Log "模板缺失，跳过网页生成: $TemplateFile"
 }
