@@ -137,6 +137,7 @@ function Clean-Title([string]$s) {
 
 # ---------- 抓取并解析 ----------
 $newItems   = @()
+$newSet     = @{}
 $allMatched = @{}
 
 $opt = [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline
@@ -227,7 +228,10 @@ foreach ($src in $Sources) {
     foreach ($k in $srcMatched.Keys) {
         $it = $srcMatched[$k]
         if (-not $allMatched.ContainsKey($k)) { $allMatched[$k] = $it }
-        if (-not $Seen.ContainsKey($k)) { $newItems += $it }
+        if (-not $Seen.ContainsKey($k) -and -not $newSet.ContainsKey($k)) {
+            $newSet[$k] = $true
+            $newItems += $it
+        }
     }
     Log ("  [$name] 命中 $cnt 条")
 }
