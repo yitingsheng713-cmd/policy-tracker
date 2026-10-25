@@ -107,6 +107,13 @@ function Get-DateFromText([string]$s) {
     return ''
 }
 
+function Get-LastDateFromText([string]$s) {
+    $ms = [regex]::Matches($s, '20\d{2}[-./年]\d{1,2}[-./月]\d{1,2}')
+    if ($ms.Count -eq 0) { return '' }
+    $d = $ms[$ms.Count - 1].Value -replace '年', '-' -replace '月', '-' -replace '日', '' -replace '\.', '-' -replace '/', '-'
+    return $d
+}
+
 function Resolve-Url([string]$base, [string]$href) {
     try { return ([System.Uri]::new([System.Uri]$base, $href)).AbsoluteUri }
     catch { return $href }
@@ -133,7 +140,7 @@ $newItems   = @()
 $allMatched = @{}
 
 $opt = [System.Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [System.Text.RegularExpressions.RegexOptions]::Singleline
-$rx  = [regex]::new('<a\b[^>]*href=["''](?<href>[^"'']+)["''][^>]*>(?<title>[^<]{4,})</a>(?=(?<tail>.{0,220}))', $opt)
+$rx  = [regex]::new('(?<pre>.{0,60})<a\b[^>]*href=["''](?<href>[^"'']+)["''][^>]*>(?<title>[^<]{4,})</a>(?=(?<tail>.{0,220}))', $opt)
 $cutoff = (Get-Date).Date.AddDays(-$DaysBack)
 
 foreach ($src in $Sources) {
@@ -157,6 +164,7 @@ foreach ($src in $Sources) {
         $href  = $m.Groups['href'].Value
         $title = $m.Groups['title'].Value
         $tail  = $m.Groups['tail'].Value
+        $pre   = $m.Groups['pre'].Value
 
         if ($href -match '^(javascript:|#|mailto:|tel:)') { continue }
         if ($href -match '\.(css|js|png|jpe?g|gif|ico|xml|pdf|docx?)(\?|$)') { continue }
@@ -186,7 +194,13 @@ foreach ($src in $Sources) {
         } catch { }
 
         $date = Get-DateFromUrl $href
-        if (-not $date) { $date = Get-DateFromText $tail }
+        if ($src.dateBeforeLink) {
+            # wap 等站点把日期放在链接前面的 <span> 里，优先取链接前最近的日期
+            if (-not $date) { $date = Get-LastDateFromText $pre }
+            if (-not $date) { $date = Get-DateFromText $tail }
+        } else {
+            if (-not $date) { $date = Get-DateFromText $tail }
+        }
         # 无日期时，尝试 "URL中的年份 + 文本中的月-日" 组合（如 samr：URL含2026，列表含09-26）
         if (-not $date) {
             $ym = [regex]::Match($href, '(20\d{2})')

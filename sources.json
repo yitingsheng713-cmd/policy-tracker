@@ -5,5 +5,6 @@
   {"name":"国家能源局","base":"https://www.nea.gov.cn","url":"https://www.nea.gov.cn/","testFile":".tmp/nea.html","note":"首页(含通知公告)"},
   {"name":"财政部","base":"https://www.mof.gov.cn","url":"https://www.mof.gov.cn/zhengwuxinxi/zhengcefabu/","testFile":".tmp/mof.html","note":"政策发布"},
   {"name":"市场监管总局","base":"https://www.samr.gov.cn","url":"https://www.samr.gov.cn/","testFile":".tmp/samr.html","note":"首页(子栏目JS渲染,覆盖有限)"},
-  {"name":"工业和信息化部","base":"https://www.miit.gov.cn","url":"https://www.miit.gov.cn/","testFile":".tmp/miit_home.html","note":"首页(含政策文件)"}
+  {"name":"工业和信息化部","base":"https://www.miit.gov.cn","url":"https://www.miit.gov.cn/","testFile":".tmp/miit_home.html","note":"首页(含政策文件)"},
+  {"name":"工业和信息化部(手机版)","base":"https://www.miit.gov.cn","url":"https://wap.miit.gov.cn/","testFile":".tmp/wap_miit_home.html","dateBeforeLink":true,"note":"wap首页(最新政策/工信动态/新闻发布,详情链接指向PC站,日期在链接前)"}
 ]

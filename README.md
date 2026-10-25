@@ -13,6 +13,7 @@
 | 财政部 | https://www.mof.gov.cn/zhengwuxinxi/zhengcefabu/ | 政策发布 |
 | 市场监管总局 | https://www.samr.gov.cn/ | 首页（子栏目 JS 渲染，覆盖有限） |
 | 工业和信息化部 | https://www.miit.gov.cn/ | 首页（含政策文件） |
+| 工业和信息化部（手机版） | https://wap.miit.gov.cn/ | 首页（最新政策/工信动态，详情链接指向 PC 站） |
 
 ## 二、文件说明
 
